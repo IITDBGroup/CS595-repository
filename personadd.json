@@ -1,0 +1,3 @@
+{"name":"Michael", "age":54, "address": [ { "zip": 50123, "city": "chicago" }, { "zip": 60615, "city": "chicago" } ] }
+{"name":"Andy", "age":30, "address": [ { "zip": 55555, "city": "chicago" } ] }
+{"name":"Justin", "age":19}

@@ -1,0 +1,237 @@
+#+TITLE: Cypher Property Graph Query Language Demo with Neo4j
+* Property graph model
+
+In the property graph model, data is represented using graphs with nodes and edges that both can have *types* (called *labels*) and can be associated with a map of name-value pairs (called *properties*). In this demo, we will look at *Cypher*, a declarative query and data definition language for property graphs. We will use [[https://github.com/neo4j/neo4j][Neo4j]] which implements this language.
+
+* Creating graphs
+
+- the =CREATE= statement creates new nodes and edges. A single create statement can create multiple nodes and edges. The statement is finished with =;=.
+
+The syntax for creating a node is:
+
+#+begin_src cypher :password neopren :results none
+CREATE (nodeid:label { propertynameOne:'value1', ..., propertynameN:'valueN' });
+#+end_src
+
+Note that node ids are only valid within the scope of a single statement.
+
+To create an edge:
+#+begin_src cypher :password neopren :results none
+CREATE (nodeidOne)-[:EDGE_LABEL] { propertynameOne:'value1', ..., propertynameN:'valueN' }->(nodeidTwo)
+#+end_src
+
+#+BEGIN_SRC cypher :password neopren
+CREATE (matrix1:Movie { title : 'The Matrix', year : '1999-03-31' })
+CREATE (matrix2:Movie { title : 'The Matrix Reloaded', year : '2003-05-07' })
+CREATE (matrix3:Movie { title : 'The Matrix Revolutions', year : '2003-10-27' })
+CREATE (keanu:Actor { name:'Keanu Reeves' })
+CREATE (laurence:Actor { name:'Laurence Fishburne' })
+CREATE (carrieanne:Actor { name:'Carrie-Anne Moss' })
+CREATE (keanu)-[:ACTS_IN { role : 'Neo' }]->(matrix1)
+CREATE (keanu)-[:ACTS_IN { role : 'Neo' }]->(matrix2)
+CREATE (keanu)-[:ACTS_IN { role : 'Neo' }]->(matrix3)
+CREATE (laurence)-[:ACTS_IN { role : 'Morpheus' }]->(matrix1)
+CREATE (laurence)-[:ACTS_IN { role : 'Morpheus' }]->(matrix2)
+CREATE (laurence)-[:ACTS_IN { role : 'Morpheus' }]->(matrix3)
+CREATE (carrieanne)-[:ACTS_IN { role : 'Trinity' }]->(matrix1)
+CREATE (carrieanne)-[:ACTS_IN { role : 'Trinity' }]->(matrix2)
+CREATE (carrieanne)-[:ACTS_IN { role : 'Trinity' }]->(matrix3)
+#+END_SRC
+
+#+RESULTS:
+|---|
+
+* Querying with Cypher
+
+** Pattern matching and specifying what to return
+
+- cypher is based on patterns that are matched against the graph specified in the =MATCH= clause
+- as side effects of matching patterns, variables specified in the pattern are bound to the nodes / edges matched against the pattern
+- the =RETURN= clause specified what should be returned
+  - Cypher queries either return a table or a graph depending on what is specified in the =RETURN= clause
+  - as in SQL =*= returns everything
+
+*** Anatomy of a pattern
+
+**** Matching nodes
+
+A node pattern is specified as:
+
+#+begin_src cypher :results none
+(variablename:label { propertynameOne:'value1', ..., propertynameN:'valueN' })
+#+end_src
+
+This pattern will match all nodes of type =label= that have a property =propertynameOne= with value =value1=, a property =propertynameTwo= with value =value2=, and so one. All elements are optional, so the most basic node pattern that matches any node in the database is:
+
+#+begin_src cypher :results none
+()
+#+end_src
+
+Consider some more examples:
+
+#+begin_src cypher :results none
+(x) // match any node and bind it to variable x
+(x:LABEL) // match any node of type LABEL and bind it to variable x
+(:LABEL) // match any node of type LABEL, but do not bind to to any variable
+(x { name: 'XXX' }) // match any node that has a property name with value XXX and bind it to variable x
+#+end_src
+
+Note that a pattern can consist of multiple parts
+
+#+begin_src cypher :results none
+(x:Movie), (y:Actor) // bind x to all movies and y to all actors
+#+end_src
+
+**** Matching edges and paths
+***** Single edges
+Such a pattern defines constraints on an edge and its end points. The general form is =()-[]->()= where =()= are node patterns as described above and =[]= places restrictions on the edge and possibly binds it to a variable. For example, to find actors that acted in movies:
+
+#+begin_src cypher :results none
+(a:Actor)-[r:ACTS_IN]->(movie:Movie)
+#+end_src
+
+To find actors that are playing role =Neo= in some movie:
+
+#+begin_src cypher :results none
+(a:Actor)-[r:ACTS_IN { role="Neo" }]->(movie:Movie)
+#+end_src
+
+Note that the edges can be written in either direction:
+
+#+begin_src cypher :results none
+(movie:Movie)<-[r:ACTS_IN { role="Neo" }]-(a:Actor)
+#+end_src
+
+It is also possible to match on multiple relationship types:
+
+#+begin_src cypher :results none
+(movie:Movie)<-[r:ACTS_IN|DIRECTS_IN]-(a:Actor)
+#+end_src
+
+
+***** Paths
+
+Patterns can also encode paths of arbitrary length. Using =*= paths of any length are matched. For example, to find movies that are connected somehow in the graph:
+
+#+begin_src cypher :results none
+(movie:Movie)-[*]-(otherMovie:Movie)
+#+end_src
+
+It is also possible to specify that the path should be of a certain length or that the length of the path is between a lower and an upper bound.
+
+#+begin_src cypher :results none
+(movie:Movie)-[*2]-(otherMovie:Movie) // movies connected to other movies with path of length 2
+(movie:Movie)-[*1..4]-(otherMovie:Movie) // movies connected to other movies with paths of length 1 to 4
+#+end_src
+
+Other constraints on edges can be combined with path restrictions. For example, to movies that are direct or indirect sequels of another movie:
+
+#+begin_src cypher :results none
+(movie:Movie)-[:SEQUEL_OF*]-(:Movie)
+#+end_src
+
+Paths can also be bound to variables like so:
+
+#+begin_src cypher :results none
+p = (movie:Movie)-[:SEQUEL_OF*]-(:Movie)
+#+end_src
+
+Paths can also be bound to variables like so:
+
+*** Specifying what is returns
+**** Returning graphs
+
+ Returning =*= returns the subgraph consisting of all nodes and edges that are matched by the pattern declared in the =MATCH= clause.
+ For example, to return all actors and the movies they acted in:
+
+ #+BEGIN_SRC cypher :file actedin.png :password neopren :results file
+MATCH (actor)-[r:ACTS_IN]->(movie)
+RETURN *
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:actedin.png]]
+
+ To return all actors and movies in the database:
+
+ #+BEGIN_SRC cypher :file actorsandmovies.png :password neopren :results file
+MATCH (actor:Actor),
+      (movie:Movie)
+RETURN *
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:actorsandmovies.png]]
+
+ To return actors that played character Neo in
+
+ #+BEGIN_SRC cypher :file neoroles.png :password neopren :results file
+MATCH (a:Actor)-[r:ACTS_IN { role: "Neo" }]->(movie:Movie)
+RETURN *
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:neoroles.png]]
+
+
+ #+BEGIN_SRC cypher :file lauence.png :password neopren :results file
+MATCH p = (a:Actor { name: "Laurence Fishburne" })-[*2]-(b:Actor)
+RETURN *
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:lauence.png]]
+
+
+
+**** Returning tables
+
+ - when only properties are selected in the =RETURN= clause then the result is a table
+
+ - Let us return the name of actors that acted in some movie
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+match (actor)-[r:ACTS_IN]->(movie)
+return actor.name
+ #+END_SRC
+
+ #+RESULTS:
+ | actor.name         |
+ |--------------------|
+ | Keanu Reeves       |
+ | Keanu Reeves       |
+ | Keanu Reeves       |
+ | Laurence Fishburne |
+ | Laurence Fishburne |
+ | Laurence Fishburne |
+ | Carrie-Anne Moss   |
+ | Carrie-Anne Moss   |
+ | Carrie-Anne Moss   |
+
+ - or the names of actors and the titles of movies they starred in and what their role was
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (actor)-[r:ACTS_IN]->(movie)
+RETURN actor.name, r.role, movie.title
+ #+END_SRC
+
+ #+RESULTS:
+ | actor.name         | r.role   | movie.title            |
+ |--------------------+----------+------------------------|
+ | Keanu Reeves       | Neo      | The Matrix Revolutions |
+ | Keanu Reeves       | Neo      | The Matrix Reloaded    |
+ | Keanu Reeves       | Neo      | The Matrix             |
+ | Laurence Fishburne | Morpheus | The Matrix Revolutions |
+ | Laurence Fishburne | Morpheus | The Matrix Reloaded    |
+ | Laurence Fishburne | Morpheus | The Matrix             |
+ | Carrie-Anne Moss   | Trinity  | The Matrix Revolutions |
+ | Carrie-Anne Moss   | Trinity  | The Matrix Reloaded    |
+ | Carrie-Anne Moss   | Trinity  | The Matrix             |
+
+
+ # Local Variables:
+ # org-image-actual-width: 800
+ # End:
+
+*** Filtering with =WHERE=
+Like in SQL you can filter results using =WHERE=

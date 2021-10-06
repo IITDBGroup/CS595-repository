@@ -1,0 +1,1223 @@
+#+TITLE: Examples for Data Processing in Spark
+
+* Spark
+
+Spark is a DISC (data-intensive scalable computing) system that is written in Scala, a functional programming language that is compiled to Java byte code. In contrast to Hadoop MapReduce which uses excessive materialization for fault tolerance, Spark relies on logical logging (lineage) to keep track of how a data chunk was produced and if a chunk is lost, reruns this computation. Per default Spark processes data in main memory and only spills to disk if necessary.
+
+* Datasets and DataFrames
+
+Spark provides two main abstractions for data: *datasets* and *dataframes*. Fault tolerance is based on *RDDs* (Resilient Distributed Dataset) which are datasets where for each chunk we record its lineage (how it was produced from input chunks). With the exception of a few operations, namely shuffle, where one chunk may depend on many or even all input chunks, this is an effective methods for ensuring fault tolerance.
+
+** Datasets
+
+Datasets are multisets of objects of a certain type. Any Scala types (or Java or Python types when adapters for these languages are used) can be used as the base type of a set. Datasets can be created from Scala collections or from a variety of other sources, e.g., reading from a file.
+
+- bag of integers
+
+#+begin_src spark-shell :session example :exports both
+val myints = Seq(1,2,3,4,10,15,1,1,1,3).toDS()
+myints.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[1m[34mmyints[0m: [1m[32morg.apache.spark.sql.Dataset[Int][0m = [value: int]
++-----+
+|value|
++-----+
+|    1|
+|    2|
+|    3|
+|    4|
+|   10|
+|   15|
+|    1|
+|    1|
+|    1|
+|    3|
++-----+
+
+#+end_example
+
+- list of person objects
+
+#+begin_src spark-shell :session example :exports both
+case class Person(name: String, age: Int)
+val persons = Seq(Person("Peter", 15),Person("Bob",20)).toDS()
+persons.show()
+#+end_src
+
+#+RESULTS:
+: defined class Person
+: [1m[34mpersons[0m: [1m[32morg.apache.spark.sql.Dataset[Person][0m = [name: string, age: int]
+: +-----+---+
+: | name|age|
+: +-----+---+
+: |Peter| 15|
+: |  Bob| 20|
+: +-----+---+
+:
+
+** DataFrames
+
+DataFrames are essentially relational tables. Fields can still be of any Scala type. Spark provides a higher-level API for running relational algebra-style operations over data frames and even has support for running SQL queries (SparkSQL).
+
+#+begin_src spark-shell :session example :exports both
+val myintdf = Seq((1),(3),(1),(1),(5)).toDF()
+myintdf.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[1m[34mmyintdf[0m: [1m[32morg.apache.spark.sql.DataFrame[0m = [value: int]
++-----+
+|value|
++-----+
+|    1|
+|    3|
+|    1|
+|    1|
+|    5|
++-----+
+
+#+end_example
+
+
+#+begin_src spark-shell :session example :exports both
+  val personDF = Seq(Person("Peter", 15),Person("Bob",20)).toDF()
+  personDF.show()
+#+end_src
+
+#+RESULTS:
+: [1m[34mpersonDF[0m: [1m[32morg.apache.spark.sql.DataFrame[0m = [name: string, age: int]
+: +-----+---+
+: | name|age|
+: +-----+---+
+: |Peter| 15|
+: |  Bob| 20|
+: +-----+---+
+:
+
+** Loading from files
+
+*** loading from a CSV file
+
+    #+begin_src shell
+head -n 5 uscities.csv
+    #+end_src
+
+    #+RESULTS:
+    | city        | city_ascii  | state_id | state_name | county_fips | county_name | county_fips_all | county_name_all |     lat |       lng | population | density | source  | military | incorporated | timezone            | ranking | zips              |         id |
+    | South Creek | South Creek | WA       | Washington |       53053 | Pierce      |           53053 | Pierce          | 46.9994 | -122.3921 |       2500 |     125 | polygon | FALSE    | TRUE         | America/Los_Angeles |       3 | 98580 98387 98338 | 1840042075 |
+    | Roslyn      | Roslyn      | WA       | Washington |       53037 | Kittitas    |           53037 | Kittitas        | 47.2507 | -121.0989 |        947 |      84 | polygon | FALSE    | TRUE         | America/Los_Angeles |       3 | 98941 98068 98925 | 1840019842 |
+    | Sprague     | Sprague     | WA       | Washington |       53043 | Lincoln     |           53043 | Lincoln         | 47.3048 | -117.9713 |        441 |     163 | polygon | FALSE    | TRUE         | America/Los_Angeles |       3 | 99032             | 1840021107 |
+    | Gig Harbor  | Gig Harbor  | WA       | Washington |       53053 | Pierce      |           53053 | Pierce          | 47.3352 | -122.5968 |       9507 |     622 | polygon | FALSE    | TRUE         | America/Los_Angeles |       3 | 98332 98335       | 1840019855 |
+
+ #+begin_src spark-shell :session example :exports both
+val csv = spark.read.option("header",true).csv("./uscities.csv")
+csv.show()
+ #+end_src
+
+ #+RESULTS:
+ #+begin_example
+ 21/09/30 09:58:10 ERROR Utils: Aborting task
+ java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+     at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+     at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+     at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+     at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+     at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+     at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+     at java.lang.Class.forName0(Native Method)
+     at java.lang.Class.forName(Class.java:348)
+     at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+     at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+     at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+     at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+     at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+     at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+     at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+     at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+     at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+     at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+     at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+     at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+     at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+     at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+     at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+     at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+     at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+     at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+     at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+     at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+     at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+     at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+     at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+     at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+     at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+     at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+     at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+     at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+     at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+     at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+     at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+     at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+     at org.apache.spark.scheduler.Task.run(Task.scala:131)
+     at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+     at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+     at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+     at java.lang.Thread.run(Thread.java:748)
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+     at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+     at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+     at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+     at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+     at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+     at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+     at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+     at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+     at java.lang.Thread.run(Thread.java:748)
+ 21/09/30 09:58:10 ERROR ExecutorClassLoader: Failed to check existence of class org.apache.spark.sql.catalyst.expressions.Object on REPL class server at spark://borismacbook:53102/classes
+ java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+     at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+     at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+     at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+     at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+     at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+     at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+     at java.lang.Class.forName0(Native Method)
+     at java.lang.Class.forName(Class.java:348)
+     at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+     at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+     at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+     at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+     at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+     at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+     at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+     at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+     at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+     at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+     at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+     at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+     at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+     at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+     at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+     at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+     at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+     at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+     at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+     at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+     at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+     at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+     at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+     at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+     at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+     at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+     at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+     at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+     at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+     at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+     at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+     at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+     at org.apache.spark.scheduler.Task.run(Task.scala:131)
+     at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+     at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+     at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+     at java.lang.Thread.run(Thread.java:748)
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+     at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+     at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+     at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+     at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+     at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+     at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+     at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+     at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+     at java.lang.Thread.run(Thread.java:748)
+ 21/09/30 09:58:10 ERROR Executor: Exception in task 0.0 in stage 0.0 (TID 0)
+ org.apache.spark.repl.RemoteClassLoaderError: org.apache.spark.sql.catalyst.expressions.Object
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:120)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+     at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+     at java.lang.Class.forName0(Native Method)
+     at java.lang.Class.forName(Class.java:348)
+     at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+     at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+     at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+     at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+     at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+     at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+     at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+     at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+     at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+     at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+     at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+     at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+     at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+     at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+     at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+     at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+     at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+     at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+     at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+     at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+     at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+     at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+     at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+     at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+     at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+     at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+     at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+     at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+     at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+     at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+     at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+     at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+     at org.apache.spark.scheduler.Task.run(Task.scala:131)
+     at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+     at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+     at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+     at java.lang.Thread.run(Thread.java:748)
+ Caused by: java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+     at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+     at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+     at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+     at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+     at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+     ... 96 more
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+     at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+     at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+     at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+     at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+     at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+     at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+     at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+     at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+     at java.lang.Thread.run(Thread.java:748)
+ 21/09/30 09:58:10 WARN TaskSetManager: Lost task 0.0 in stage 0.0 (TID 0) (borismacbook executor driver): org.apache.spark.repl.RemoteClassLoaderError: org.apache.spark.sql.catalyst.expressions.Object
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:120)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+     at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+     at java.lang.Class.forName0(Native Method)
+     at java.lang.Class.forName(Class.java:348)
+     at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+     at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+     at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+     at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+     at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+     at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+     at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+     at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+     at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+     at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+     at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+     at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+     at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+     at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+     at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+     at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+     at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+     at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+     at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+     at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+     at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+     at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+     at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+     at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+     at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+     at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+     at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+     at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+     at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+     at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+     at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+     at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+     at org.apache.spark.scheduler.Task.run(Task.scala:131)
+     at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+     at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+     at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+     at java.lang.Thread.run(Thread.java:748)
+ Caused by: java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+     at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+     at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+     at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+     at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+     at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+     ... 96 more
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+     at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+     at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+     at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+     at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+     at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+     at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+     at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+     at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+     at java.lang.Thread.run(Thread.java:748)
+
+ 21/09/30 09:58:10 ERROR TaskSetManager: Task 0 in stage 0.0 failed 1 times; aborting job
+ org.apache.spark.SparkException: Job aborted due to stage failure: Task 0 in stage 0.0 failed 1 times, most recent failure: Lost task 0.0 in stage 0.0 (TID 0) (borismacbook executor driver): org.apache.spark.repl.RemoteClassLoaderError: org.apache.spark.sql.catalyst.expressions.Object
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:120)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+     at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+     at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+     at java.lang.Class.forName0(Native Method)
+     at java.lang.Class.forName(Class.java:348)
+     at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+     at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+     at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+     at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+     at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+     at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+     at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+     at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+     at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+     at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+     at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+     at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+     at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+     at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+     at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+     at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+     at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+     at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+     at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+     at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+     at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+     at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+     at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+     at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+     at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+     at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+     at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+     at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+     at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+     at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+     at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+     at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+     at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+     at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+     at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+     at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+     at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+     at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+     at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+     at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+     at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+     at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+     at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+     at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+     at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+     at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+     at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+     at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+     at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+     at org.apache.spark.scheduler.Task.run(Task.scala:131)
+     at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+     at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+     at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+     at java.lang.Thread.run(Thread.java:748)
+ Caused by: java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+     at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+     at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+     at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+     at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+     at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+     at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+     at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+     at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+     ... 96 more
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+     at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+     at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+     at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+     at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+     at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+     at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+     at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+     at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+     at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+     at java.lang.Thread.run(Thread.java:748)
+
+ Driver stacktrace:
+   at org.apache.spark.scheduler.DAGScheduler.failJobAndIndependentStages(DAGScheduler.scala:2253)
+   at org.apache.spark.scheduler.DAGScheduler.$anonfun$abortStage$2(DAGScheduler.scala:2202)
+   at org.apache.spark.scheduler.DAGScheduler.$anonfun$abortStage$2$adapted(DAGScheduler.scala:2201)
+   at scala.collection.mutable.ResizableArray.foreach(ResizableArray.scala:62)
+   at scala.collection.mutable.ResizableArray.foreach$(ResizableArray.scala:55)
+   at scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:49)
+   at org.apache.spark.scheduler.DAGScheduler.abortStage(DAGScheduler.scala:2201)
+   at org.apache.spark.scheduler.DAGScheduler.$anonfun$handleTaskSetFailed$1(DAGScheduler.scala:1078)
+   at org.apache.spark.scheduler.DAGScheduler.$anonfun$handleTaskSetFailed$1$adapted(DAGScheduler.scala:1078)
+   at scala.Option.foreach(Option.scala:407)
+   at org.apache.spark.scheduler.DAGScheduler.handleTaskSetFailed(DAGScheduler.scala:1078)
+   at org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.doOnReceive(DAGScheduler.scala:2440)
+   at org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.onReceive(DAGScheduler.scala:2382)
+   at org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.onReceive(DAGScheduler.scala:2371)
+   at org.apache.spark.util.EventLoop$$anon$1.run(EventLoop.scala:49)
+   at org.apache.spark.scheduler.DAGScheduler.runJob(DAGScheduler.scala:868)
+   at org.apache.spark.SparkContext.runJob(SparkContext.scala:2202)
+   at org.apache.spark.SparkContext.runJob(SparkContext.scala:2223)
+   at org.apache.spark.SparkContext.runJob(SparkContext.scala:2242)
+   at org.apache.spark.sql.execution.SparkPlan.executeTake(SparkPlan.scala:472)
+   at org.apache.spark.sql.execution.SparkPlan.executeTake(SparkPlan.scala:425)
+   at org.apache.spark.sql.execution.CollectLimitExec.executeCollect(limit.scala:47)
+   at org.apache.spark.sql.Dataset.collectFromPlan(Dataset.scala:3696)
+   at org.apache.spark.sql.Dataset.$anonfun$head$1(Dataset.scala:2722)
+   at org.apache.spark.sql.Dataset.$anonfun$withAction$1(Dataset.scala:3687)
+   at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$5(SQLExecution.scala:103)
+   at org.apache.spark.sql.execution.SQLExecution$.withSQLConfPropagated(SQLExecution.scala:163)
+   at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$1(SQLExecution.scala:90)
+   at org.apache.spark.sql.SparkSession.withActive(SparkSession.scala:772)
+   at org.apache.spark.sql.execution.SQLExecution$.withNewExecutionId(SQLExecution.scala:64)
+   at org.apache.spark.sql.Dataset.withAction(Dataset.scala:3685)
+   at org.apache.spark.sql.Dataset.head(Dataset.scala:2722)
+   at org.apache.spark.sql.Dataset.take(Dataset.scala:2929)
+   at org.apache.spark.sql.execution.datasources.csv.TextInputCSVDataSource$.infer(CSVDataSource.scala:112)
+   at org.apache.spark.sql.execution.datasources.csv.CSVDataSource.inferSchema(CSVDataSource.scala:65)
+   at org.apache.spark.sql.execution.datasources.csv.CSVFileFormat.inferSchema(CSVFileFormat.scala:62)
+   at org.apache.spark.sql.execution.datasources.DataSource.$anonfun$getOrInferFileFormatSchema$11(DataSource.scala:208)
+   at scala.Option.orElse(Option.scala:447)
+   at org.apache.spark.sql.execution.datasources.DataSource.getOrInferFileFormatSchema(DataSource.scala:205)
+   at org.apache.spark.sql.execution.datasources.DataSource.resolveRelation(DataSource.scala:418)
+   at org.apache.spark.sql.DataFrameReader.loadV1Source(DataFrameReader.scala:326)
+   at org.apache.spark.sql.DataFrameReader.$anonfun$load$3(DataFrameReader.scala:308)
+   at scala.Option.getOrElse(Option.scala:189)
+   at org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:308)
+   at org.apache.spark.sql.DataFrameReader.csv(DataFrameReader.scala:796)
+   at org.apache.spark.sql.DataFrameReader.csv(DataFrameReader.scala:596)
+   ... 71 elided
+ Caused by: org.apache.spark.repl.RemoteClassLoaderError: org.apache.spark.sql.catalyst.expressions.Object
+   at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:120)
+   at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+   at java.lang.ClassLoader.loadClass(ClassLoader.java:405)
+   at org.apache.spark.util.ParentClassLoader.loadClass(ParentClassLoader.java:40)
+   at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+   at java.lang.Class.forName0(Native Method)
+   at java.lang.Class.forName(Class.java:348)
+   at org.codehaus.janino.ClassLoaderIClassLoader.findIClass(ClassLoaderIClassLoader.java:89)
+   at org.codehaus.janino.IClassLoader.loadIClass(IClassLoader.java:317)
+   at org.codehaus.janino.UnitCompiler.findTypeByName(UnitCompiler.java:8618)
+   at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6771)
+   at org.codehaus.janino.UnitCompiler.getReferenceType(UnitCompiler.java:6620)
+   at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6599)
+   at org.codehaus.janino.UnitCompiler.access$14300(UnitCompiler.java:226)
+   at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6502)
+   at org.codehaus.janino.UnitCompiler$22$1.visitReferenceType(UnitCompiler.java:6497)
+   at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4134)
+   at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+   at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+   at org.codehaus.janino.Java$ReferenceType.accept(Java.java:4133)
+   at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+   at org.codehaus.janino.UnitCompiler.getType2(UnitCompiler.java:6895)
+   at org.codehaus.janino.UnitCompiler.access$14100(UnitCompiler.java:226)
+   at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6500)
+   at org.codehaus.janino.UnitCompiler$22$1.visitArrayType(UnitCompiler.java:6497)
+   at org.codehaus.janino.Java$ArrayType.accept(Java.java:4215)
+   at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6497)
+   at org.codehaus.janino.UnitCompiler$22.visitType(UnitCompiler.java:6490)
+   at org.codehaus.janino.Java$ArrayType.accept(Java.java:4214)
+   at org.codehaus.janino.UnitCompiler.getType(UnitCompiler.java:6490)
+   at org.codehaus.janino.UnitCompiler.access$1300(UnitCompiler.java:226)
+   at org.codehaus.janino.UnitCompiler$36.getParameterTypes2(UnitCompiler.java:10451)
+   at org.codehaus.janino.IClass$IInvocable.getParameterTypes(IClass.java:959)
+   at org.codehaus.janino.IClass$IMethod.getDescriptor2(IClass.java:1224)
+   at org.codehaus.janino.IClass$IInvocable.getDescriptor(IClass.java:982)
+   at org.codehaus.janino.IClass.getIMethods(IClass.java:248)
+   at org.codehaus.janino.IClass.getIMethods(IClass.java:237)
+   at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:470)
+   at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:410)
+   at org.codehaus.janino.UnitCompiler.access$400(UnitCompiler.java:226)
+   at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:389)
+   at org.codehaus.janino.UnitCompiler$2.visitPackageMemberClassDeclaration(UnitCompiler.java:384)
+   at org.codehaus.janino.Java$PackageMemberClassDeclaration.accept(Java.java:1594)
+   at org.codehaus.janino.UnitCompiler.compile(UnitCompiler.java:384)
+   at org.codehaus.janino.UnitCompiler.compile2(UnitCompiler.java:362)
+   at org.codehaus.janino.UnitCompiler.access$000(UnitCompiler.java:226)
+   at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:336)
+   at org.codehaus.janino.UnitCompiler$1.visitCompilationUnit(UnitCompiler.java:333)
+   at org.codehaus.janino.Java$CompilationUnit.accept(Java.java:363)
+   at org.codehaus.janino.UnitCompiler.compileUnit(UnitCompiler.java:333)
+   at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:235)
+   at org.codehaus.janino.SimpleCompiler.compileToClassLoader(SimpleCompiler.java:464)
+   at org.codehaus.janino.ClassBodyEvaluator.compileToClass(ClassBodyEvaluator.java:314)
+   at org.codehaus.janino.ClassBodyEvaluator.cook(ClassBodyEvaluator.java:237)
+   at org.codehaus.janino.SimpleCompiler.cook(SimpleCompiler.java:205)
+   at org.codehaus.commons.compiler.Cookable.cook(Cookable.java:80)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.org$apache$spark$sql$catalyst$expressions$codegen$CodeGenerator$$doCompile(CodeGenerator.scala:1403)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1500)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$$anon$1.load(CodeGenerator.scala:1497)
+   at org.sparkproject.guava.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3599)
+   at org.sparkproject.guava.cache.LocalCache$Segment.loadSync(LocalCache.java:2379)
+   at org.sparkproject.guava.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2342)
+   at org.sparkproject.guava.cache.LocalCache$Segment.get(LocalCache.java:2257)
+   at org.sparkproject.guava.cache.LocalCache.get(LocalCache.java:4000)
+   at org.sparkproject.guava.cache.LocalCache.getOrLoad(LocalCache.java:4004)
+   at org.sparkproject.guava.cache.LocalCache$LocalLoadingCache.get(LocalCache.java:4874)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator$.compile(CodeGenerator.scala:1351)
+   at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:378)
+   at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:331)
+   at org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection$.create(GenerateUnsafeProjection.scala:34)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1277)
+   at org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator.generate(CodeGenerator.scala:1274)
+   at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns$lzycompute(FileFormat.scala:137)
+   at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.appendPartitionColumns(FileFormat.scala:136)
+   at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:141)
+   at org.apache.spark.sql.execution.datasources.FileFormat$$anon$1.apply(FileFormat.scala:132)
+   at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.org$apache$spark$sql$execution$datasources$FileScanRDD$$anon$$readCurrentFile(FileScanRDD.scala:116)
+   at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.nextIterator(FileScanRDD.scala:169)
+   at org.apache.spark.sql.execution.datasources.FileScanRDD$$anon$1.hasNext(FileScanRDD.scala:93)
+   at scala.collection.Iterator$$anon$10.hasNext(Iterator.scala:458)
+   at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIteratorForCodegenStage1.processNext(Unknown Source)
+   at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+   at org.apache.spark.sql.execution.WholeStageCodegenExec$$anon$1.hasNext(WholeStageCodegenExec.scala:755)
+   at org.apache.spark.sql.execution.SparkPlan.$anonfun$getByteArrayRdd$1(SparkPlan.scala:345)
+   at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2(RDD.scala:898)
+   at org.apache.spark.rdd.RDD.$anonfun$mapPartitionsInternal$2$adapted(RDD.scala:898)
+   at org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)
+   at org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:373)
+   at org.apache.spark.rdd.RDD.iterator(RDD.scala:337)
+   at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+   at org.apache.spark.scheduler.Task.run(Task.scala:131)
+   at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:497)
+   at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1439)
+   at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:500)
+   at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+   at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+   at java.lang.Thread.run(Thread.java:748)
+ Caused by: java.io.IOException: Failed to connect to borismacbook/192.168.1.233:53102
+   at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:287)
+   at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:218)
+   at org.apache.spark.network.client.TransportClientFactory.createClient(TransportClientFactory.java:230)
+   at org.apache.spark.rpc.netty.NettyRpcEnv.downloadClient(NettyRpcEnv.scala:399)
+   at org.apache.spark.rpc.netty.NettyRpcEnv.$anonfun$openChannel$4(NettyRpcEnv.scala:367)
+   at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+   at org.apache.spark.util.Utils$.tryWithSafeFinallyAndFailureCallbacks(Utils.scala:1473)
+   at org.apache.spark.rpc.netty.NettyRpcEnv.openChannel(NettyRpcEnv.scala:366)
+   at org.apache.spark.repl.ExecutorClassLoader.getClassFileInputStreamFromSparkRPC(ExecutorClassLoader.scala:135)
+   at org.apache.spark.repl.ExecutorClassLoader.$anonfun$fetchFn$1(ExecutorClassLoader.scala:66)
+   at org.apache.spark.repl.ExecutorClassLoader.findClassLocally(ExecutorClassLoader.scala:176)
+   at org.apache.spark.repl.ExecutorClassLoader.findClass(ExecutorClassLoader.scala:113)
+   ... 96 more
+ Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Operation timed out: borismacbook/192.168.1.233:53102
+ Caused by: java.net.ConnectException: Operation timed out
+   at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+   at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:716)
+   at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+   at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+   at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:702)
+   at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:650)
+   at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:576)
+   at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+   at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+   at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+   at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+   at java.lang.Thread.run(Thread.java:748)
+ /var/folders/f7/xnz8v_b13td37s3k4w8t5j2h0000gn/T/babel-uYvCmD/spark-shell-vars-g0cJf9.scala:24: [31merror: [0mnot found: value csv
+ csv.show()
+ ^
+ #+end_example
+
+*** loading from a JSON file (new line separated json
+
+    #+begin_src shell :results raw drawer
+cat people.json
+    #+end_src
+
+    #+RESULTS:
+    :results:
+    {"name":"Michael"}
+    {"name":"Andy", "age":30}
+    {"name":"Justin", "age":19}
+    :end:
+
+ #+begin_src spark-shell :session example :exports both
+val people = spark.read.json("./people.json")
+people.show()
+ #+end_src
+
+ #+RESULTS:
+ : [1m[34mpeople[0m: [1m[32morg.apache.spark.sql.DataFrame[0m = [age: bigint, name: string]
+ : +----+-------+
+ : | age|   name|
+ : +----+-------+
+ : |null|Michael|
+ : |  30|   Andy|
+ : |  19| Justin|
+ : +----+-------+
+ :
+
+ #+begin_src spark-shell :session example :exports both
+val padd = spark.read.json("./personadd.json")
+padd.show()
+ #+end_src
+
+
+* Transformations and Actions
+
+Spark dataframes and datasets provide functions for applying operations. The result of calling an operation to a dataset/frame is a new dataframe (Spark's datasets and dataframes are immutable). Operations on RDDs are classified into *transformations* and *actions*.
+
+** Transformations
+*Transformations* are operations that can be executed lazily. For instance, when filtering a dataset, the result of this operation does not need to be computed until it has to be exposed to the user, e.g., when the user requests the result to be visualized or written to a file. Transformations in Spark are *lazy*: instead of executing a transformation directly when a transformation is applied to a dataset, Spark just records that the resulting dataset is the result of applying the transformation to the input dataset. When several transformations are applied in sequence to a dataset this internally results in the construction of a tree of operators which describe the combined computation of these transformations.
+
+** Actions
+
+*Actions* are operations that require the output of the operation to be materialized, e.g., storing the dataset in a file or showing it to the user. When an action is applied to a dataset, then Spark generates an execution plan to materialize the dataset by running all of the transformations involved in its creation.
+
+** Example dataset transformations and actions
+
+- =show= - print dataset content
+
+#+begin_src spark-shell :session example :exports both
+myints.show()
+#+end_src
+
+#+RESULTS:
+| value |
+|-------|
+|     1 |
+|     2 |
+|     3 |
+|     4 |
+|    10 |
+|    15 |
+|     1 |
+|     1 |
+|     1 |
+|     3 |
+|-------|
+
+- =map= and =reduce=
+
+#+begin_src spark-shell :session example :exports both
+val mappedInts = myints.map( x => x * 2 )
+mappedInts.show()
+val reducedInts = myints.reduce( (x,y) => x + y )
+#+end_src
+
+#+RESULTS:
+#+begin_example
+mappedInts: org.apache.spark.sql.Dataset[Int] = [value: int]
++-----+
+|value|
++-----+
+|    2|
+|    4|
+|    6|
+|    8|
+|   20|
+|   30|
+|    2|
+|    2|
+|    2|
+|    6|
++-----+
+
+reducedInts: Int = 41
+#+end_example
+
+- MR-style reduce (group on function result and then apply reducer to each group's values). The result of grouping is either a =org.apache.spark.sql.RelationalGroupedDataset= or =org.apache.spark.sql.KeyValueGroupedDataset=
+#+begin_src spark-shell :session example :exports both
+val intsGrp = myints.groupByKey(x => if (x < 10) 0 else 1) // group into two groups: less than 10 and larger than 10
+intsGrp.toString()
+val intsReduced = intsGrp.reduceGroups( (x,y) => x+y )
+intsReduced.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+intsGrp: org.apache.spark.sql.KeyValueGroupedDataset[Int,Int] = KeyValueGroupedDataset: [key: [value: int], value: [value: int]]
+res35: String = KeyValueGroupedDataset: [key: [value: int], value: [value: int]]
+intsReduced: org.apache.spark.sql.Dataset[(Int, Int)] = [value: int, ReduceAggregator(int): int]
++-----+---------------------+
+|value|ReduceAggregator(int)|
++-----+---------------------+
+|    1|                   25|
+|    0|                   16|
++-----+---------------------+
+
+#+end_example
+
+- filter (=SELECTION= in relational algebra)
+
+#+begin_src spark-shell :session example :exports both
+val myintsLessThanTen = myints.filter( x => x < 10)
+myintsLessThanTen.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+myintsLessThanTen: org.apache.spark.sql.Dataset[Int] = [value: int]
++-----+
+|value|
++-----+
+|    1|
+|    2|
+|    3|
+|    4|
+|    1|
+|    1|
+|    1|
+|    3|
++-----+
+
+#+end_example
+
+- select (=PROJECTION= in relational algebra)
+  - =$"A"= accesses attribute =A=
+  - =.as("B")= renames the result of an expression as =B=
+
+#+begin_src spark-shell :session example :exports both
+val myIntsDuped = myintsLessThanTen.select($"value".as("A"), ($"value" * 2).as("B"))
+myIntsDuped.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+myIntsDuped: org.apache.spark.sql.DataFrame = [A: int, B: int]
++---+---+
+|  A|  B|
++---+---+
+|  1|  2|
+|  2|  4|
+|  3|  6|
+|  4|  8|
+|  1|  2|
+|  1|  2|
+|  1|  2|
+|  3|  6|
++---+---+
+
+#+end_example
+
+- join (=JOIN= in relational algebra)
+
+#+begin_src spark-shell :session example :exports both
+  case class Address(id: Int, city: String, zip: Int)
+  case class LivesAt(person: String, addr: Int)
+
+  val addressDF = Seq(
+    Address(1,"Chicago", 60616),
+    Address(2,"Chicago", 60615),
+    Address(3, "New York", 55555)
+  ).toDF()
+
+  val livesatDF = Seq(
+    LivesAt("Peter", 1),
+    LivesAt("Peter",3),
+    LivesAt("Bob", 1)
+  ).toDF()
+
+  personDF.show()
+  addressDF.show()
+  livesatDF.show()
+
+  val whoLivesWhere = personDF.join(livesatDF, $"name" === $"person").join(addressDF, $"addr" === $"id").select($"name", $"zip")
+  whoLivesWhere.show()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+defined class Address
+defined class LivesAt
+addressDF: org.apache.spark.sql.DataFrame = [id: int, city: string ... 1 more field]
+livesatDF: org.apache.spark.sql.DataFrame = [person: string, addr: int]
++-----+---+
+| name|age|
++-----+---+
+|Peter| 15|
+|  Bob| 20|
++-----+---+
+
++---+--------+-----+
+| id|    city|  zip|
++---+--------+-----+
+|  1| Chicago|60616|
+|  2| Chicago|60615|
+|  3|New York|55555|
++---+--------+-----+
+
++------+----+
+|person|addr|
++------+----+
+| Peter|   1|
+| Peter|   3|
+|   Bob|   1|
++------+----+
+
+whoLivesWhere: org.apache.spark.sql.DataFrame = [name: string, zip: int]
++-----+-----+
+| name|  zip|
++-----+-----+
+|Peter|60616|
+|Peter|55555|
+|  Bob|60616|
++-----+-----+
+
+#+end_example
+
+* Spark SQL
+
+You can also directly execute SQL code on dataframes when they are registered as tables.
+
+#+begin_src spark-shell :session example :exports both
+spark.sqlContext.dropTempTable("persons")
+spark.sqlContext.dropTempTable("address")
+spark.sqlContext.dropTempTable("livesat")
+#+end_src
+
+
+#+begin_src spark-shell :session example :exports both
+personDF.createTempView("persons")
+addressDF.createTempView("address")
+livesatDF.createTempView("livesat")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+#+end_example
+
+#+begin_src spark-shell :session example :exports both
+spark.sql("SELECT * FROM persons").show()
+#+end_src
+
+#+RESULTS:
+| name  | age |
+|-------+-----|
+| Peter |  15 |
+| Bob   |  20 |
+|-------+-----|
+
+#+begin_src spark-shell :session example :exports both
+spark.sql("SELECT name, zip FROM persons p, address a, livesat l WHERE p.name = l.person AND l.addr = a.id").show()
+#+end_src
+
+#+RESULTS:
+| name  |   zip |
+|-------+-------|
+| Peter | 60616 |
+| Peter | 55555 |
+| Bob   | 60616 |
+|-------+-------|
+
+
+#+begin_src spark-shell :session example :exports both
+spark.sql("SELECT count(*) FROM persons").show()
+#+end_src
+
+#+RESULTS:
+| count(1) |
+|----------|
+|        2 |
+|----------|
