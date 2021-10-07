@@ -9,18 +9,18 @@ In the property graph model, data is represented using graphs with nodes and edg
 
 The syntax for creating a node is:
 
-#+begin_src cypher :password neopren :results none
+#+begin_src cypher :password neopren :results none :exports both
 CREATE (nodeid:label { propertynameOne:'value1', ..., propertynameN:'valueN' });
 #+end_src
 
 Note that node ids are only valid within the scope of a single statement.
 
 To create an edge:
-#+begin_src cypher :password neopren :results none
+#+begin_src cypher :password neopren :results none :exports both
 CREATE (nodeidOne)-[:EDGE_LABEL] { propertynameOne:'value1', ..., propertynameN:'valueN' }->(nodeidTwo)
 #+end_src
 
-#+BEGIN_SRC cypher :password neopren
+#+BEGIN_SRC cypher :password neopren :exports both
 CREATE (matrix1:Movie { title : 'The Matrix', year : '1999-03-31' })
 CREATE (matrix2:Movie { title : 'The Matrix Reloaded', year : '2003-05-07' })
 CREATE (matrix3:Movie { title : 'The Matrix Revolutions', year : '2003-10-27' })
@@ -144,7 +144,7 @@ Paths can also be bound to variables like so:
  Returning =*= returns the subgraph consisting of all nodes and edges that are matched by the pattern declared in the =MATCH= clause.
  For example, to return all actors and the movies they acted in:
 
- #+BEGIN_SRC cypher :file actedin.png :password neopren :results file
+ #+BEGIN_SRC cypher :file actedin.png :password neopren :results file :exports both
 MATCH (actor)-[r:ACTS_IN]->(movie)
 RETURN *
  #+END_SRC
@@ -154,7 +154,7 @@ RETURN *
 
  To return all actors and movies in the database:
 
- #+BEGIN_SRC cypher :file actorsandmovies.png :password neopren :results file
+ #+BEGIN_SRC cypher :file actorsandmovies.png :password neopren :results file :exports both
 MATCH (actor:Actor),
       (movie:Movie)
 RETURN *
@@ -165,7 +165,7 @@ RETURN *
 
  To return actors that played character Neo in
 
- #+BEGIN_SRC cypher :file neoroles.png :password neopren :results file
+ #+BEGIN_SRC cypher :file neoroles.png :password neopren :results file :exports both
 MATCH (a:Actor)-[r:ACTS_IN { role: "Neo" }]->(movie:Movie)
 RETURN *
  #+END_SRC
@@ -174,7 +174,7 @@ RETURN *
  [[file:neoroles.png]]
 
 
- #+BEGIN_SRC cypher :file lauence.png :password neopren :results file
+ #+BEGIN_SRC cypher :file lauence.png :password neopren :results file :exports both
 MATCH p = (a:Actor { name: "Laurence Fishburne" })-[*2]-(b:Actor)
 RETURN *
  #+END_SRC
@@ -190,7 +190,7 @@ RETURN *
 
  - Let us return the name of actors that acted in some movie
 
- #+BEGIN_SRC cypher :password neopren :results raw
+ #+BEGIN_SRC cypher :password neopren :exports both :results raw
 match (actor)-[r:ACTS_IN]->(movie)
 return actor.name
  #+END_SRC
@@ -210,7 +210,7 @@ return actor.name
 
  - or the names of actors and the titles of movies they starred in and what their role was
 
- #+BEGIN_SRC cypher :password neopren :results raw
+ #+BEGIN_SRC cypher :password neopren :exports both :results raw
 MATCH (actor)-[r:ACTS_IN]->(movie)
 RETURN actor.name, r.role, movie.title
  #+END_SRC
@@ -236,7 +236,7 @@ RETURN actor.name, r.role, movie.title
 *** Filtering with =WHERE=
 Like in SQL you can filter results using =WHERE=
 
- #+BEGIN_SRC cypher :file actedin.png :password neopren :results file
+ #+BEGIN_SRC cypher :file actedin.png :password neopren :results file :exports both
 MATCH (actor)-[r:ACTS_IN]->(movie)
 WHERE actor.name = 'Keanu Reeves'
 RETURN *

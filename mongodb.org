@@ -14,14 +14,6 @@ show collections;
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : inventory
 
 * Inserting and Updating JSON Documents
@@ -125,14 +117,6 @@ db.inventory.find( { item: "journal" } )
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
 
 It is also possible to compare numeric values using inequalities, e.g., =$gt= for greater than:
@@ -183,14 +167,6 @@ db.inventory.find( { tags: "red" } )
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
 
 
@@ -314,14 +290,6 @@ db.inventory.distinct("qty")
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : [ 25, 85, 100 ]
 
 ** Count documents in a collection
@@ -330,14 +298,6 @@ db.inventory.count()
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : 4
 
 
@@ -346,14 +306,6 @@ db.inventory.find( { qty: { $gt: 25 } } ).count()
 #+end_src
 
 #+RESULTS:
-: ================
-: Warning: the "mongo" shell has been superseded by "mongosh",
-: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-: an upcoming release.
-: We recommend you begin using "mongosh".
-: For installation instructions, see
-: https://docs.mongodb.com/mongodb-shell/install/
-: ================
 : 2
 
 ** Group-by aggregation (The "Aggregation Pipeline")
