@@ -235,3 +235,12 @@ RETURN actor.name, r.role, movie.title
 
 *** Filtering with =WHERE=
 Like in SQL you can filter results using =WHERE=
+
+ #+BEGIN_SRC cypher :file actedin.png :password neopren :results file
+MATCH (actor)-[r:ACTS_IN]->(movie)
+WHERE actor.name = 'Keanu Reeves'
+RETURN *
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:actedin.png]]
