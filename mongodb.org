@@ -34,14 +34,6 @@ db.inventory.insertOne(
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 {
 	"acknowledged" : true,
 	"insertedId" : ObjectId("615e444928bd018d33cd3e9c")
@@ -61,14 +53,6 @@ db.inventory.insertMany([
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 {
 	"acknowledged" : true,
 	"insertedIds" : [
@@ -96,14 +80,6 @@ db.inventory.find( {} )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
@@ -127,14 +103,6 @@ db.inventory.find( { qty: { $gt: 30 } } )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
 #+end_example
@@ -148,14 +116,6 @@ db.inventory.find( { $or: [ { item: "canvas" }, { item: "mat" } ] } )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
 #+end_example
@@ -180,14 +140,6 @@ db.inventory.find( {}, { "item": 1, "tags": 1 }  )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "tags" : [ "cotton" ] }
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "tags" : [ "blank", "red" ] }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "tags" : [ "gray" ] }
@@ -200,14 +152,6 @@ db.inventory.find( {}, { "size": 0 }  )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ] }
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ] }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ] }
@@ -224,14 +168,6 @@ db.inventory.find().limit(2)
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
 #+end_example
@@ -246,14 +182,6 @@ db.inventory.find( {} ).sort( {qty:1} )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424e"), "item" : "mousepad", "qty" : 25, "tags" : [ "gel", "blue" ], "size" : { "h" : 19, "w" : 22.85, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
@@ -266,14 +194,6 @@ db.inventory.find( {} ).sort( {qty:-1} )
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
 { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
@@ -323,14 +243,6 @@ db.inventory.aggregate([
 
 #+RESULTS:
 #+begin_example
-================
-Warning: the "mongo" shell has been superseded by "mongosh",
-which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
-an upcoming release.
-We recommend you begin using "mongosh".
-For installation instructions, see
-https://docs.mongodb.com/mongodb-shell/install/
-================
 { "_id" : 25, "total" : 50, "ag" : 25 }
 { "_id" : 85, "total" : 85, "ag" : 85 }
 #+end_example
