@@ -5,5 +5,5 @@ This repository contains examples for working with several of the big data syste
 | System  | File               |
 |---------+--------------------|
 | MongoDB | [[./mongodb.org]]      |
-| Neo4j   | ./neo4j-cypher.org |
-|         |                    |
+| Neo4j   | [[./neo4j-cypher.org]] |
+| Spark   | [[./spark.org]]        |

@@ -9,7 +9,7 @@ MongoDB is a document store for [[https://en.wikipedia.org/wiki/JSON][JSON]] doc
 use mydb;
 #+end_src
 ** Show what collections exit
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 show collections;
 #+end_src
 
@@ -34,7 +34,7 @@ show collections;
 
 When inserting a document you explicitly specify the collection it should belong to. The example shown below inserts a new JSON document into collection =inventory=.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.insertOne(
    { item: "canvas", qty: 100, tags: ["cotton"], size: { h: 28, w: 35.5, uom: "cm" } }
 )
@@ -59,7 +59,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 You can also insert multiple documents at once like this:
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.insertMany([
    { item: "journal", qty: 25, tags: ["blank", "red"], size: { h: 14, w: 21, uom: "cm" } },
    { item: "mat", qty: 85, tags: ["gray"], size: { h: 27.9, w: 35.5, uom: "cm" } },
@@ -98,7 +98,7 @@ Queries are constructed by chaining method calls starting from a collection acce
 
 Documents are filtering using =find= which takes as parameter a pattern to be matched against the document. The empty pattern ={}= matches all documents.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( {} )
 #+end_src
 
@@ -120,7 +120,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 If the document provided has elements than only documents containing such elements are returned.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( { item: "journal" } )
 #+end_src
 
@@ -137,7 +137,7 @@ db.inventory.find( { item: "journal" } )
 
 It is also possible to compare numeric values using inequalities, e.g., =$gt= for greater than:
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( { qty: { $gt: 30 } } )
 #+end_src
 
@@ -158,7 +158,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 Disjunctive conditions are supported through the =$or= construct.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( { $or: [ { item: "canvas" }, { item: "mat" } ] } )
 #+end_src
 
@@ -178,7 +178,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 For arrays it is possible to check for existence of an element in the array that matches a pattern (see [[https://docs.mongodb.com/manual/tutorial/query-arrays/][query arrays]])
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( { tags: "red" } )
 #+end_src
 
@@ -198,7 +198,7 @@ db.inventory.find( { tags: "red" } )
 
 Find also allows a projection to be specified either by stating what fields should be returned or what fields should not be returned.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( {}, { "item": 1, "tags": 1 }  )
 #+end_src
 
@@ -218,7 +218,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 { "_id" : ObjectId("615e44923e942e791a25424e"), "item" : "mousepad", "tags" : [ "gel", "blue" ] }
 #+end_example
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( {}, { "size": 0 }  )
 #+end_src
 
@@ -242,7 +242,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 ** Limiting the number of results
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find().limit(2)
 #+end_src
 
@@ -264,7 +264,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 By calling =sort= on a collection, we can sort the documents in the collection on some field in ascending order (=1=) or descending order (=-1=).
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( {} ).sort( {qty:1} )
 #+end_src
 
@@ -284,7 +284,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 { "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ], "size" : { "h" : 28, "w" : 35.5, "uom" : "cm" } }
 #+end_example
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( {} ).sort( {qty:-1} )
 #+end_src
 
@@ -309,7 +309,7 @@ https://docs.mongodb.com/mongodb-shell/install/
 
 - finding the set of distinct values in a field for all elements in a collection.
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.distinct("qty")
 #+end_src
 
@@ -325,7 +325,7 @@ db.inventory.distinct("qty")
 : [ 25, 85, 100 ]
 
 ** Count documents in a collection
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.count()
 #+end_src
 
@@ -341,7 +341,7 @@ db.inventory.count()
 : 4
 
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.find( { qty: { $gt: 25 } } ).count()
 #+end_src
 
@@ -362,7 +362,7 @@ Group-by aggregation is preceeded by a filter operation is supported using =aggr
 - =$match= defines a filter condition, the input collection is filtered based on this condition before grouping
 - =$group= defines what field to group on (=_id=) and what aggregation function to apply to which field
 
-#+begin_src mongo :db mydb
+#+begin_src mongo :db mydb :exports both
 db.inventory.aggregate([
     { $match: { qty: { $lt: 100 } } },
     { $group: { _id: "$qty", total: { $sum: "$qty" }, ag: { $avg: "$qty" } } }
