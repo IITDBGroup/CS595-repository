@@ -176,6 +176,67 @@ https://docs.mongodb.com/mongodb-shell/install/
 { "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ], "size" : { "h" : 27.9, "w" : 35.5, "uom" : "cm" } }
 #+end_example
 
+For arrays it is possible to check for existence of an element in the array that matches a pattern (see [[https://docs.mongodb.com/manual/tutorial/query-arrays/][query arrays]])
+
+#+begin_src mongo :db mydb
+db.inventory.find( { tags: "red" } )
+#+end_src
+
+#+RESULTS:
+: ================
+: Warning: the "mongo" shell has been superseded by "mongosh",
+: which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
+: an upcoming release.
+: We recommend you begin using "mongosh".
+: For installation instructions, see
+: https://docs.mongodb.com/mongodb-shell/install/
+: ================
+: { "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ], "size" : { "h" : 14, "w" : 21, "uom" : "cm" } }
+
+
+** projection
+
+Find also allows a projection to be specified either by stating what fields should be returned or what fields should not be returned.
+
+#+begin_src mongo :db mydb
+db.inventory.find( {}, { "item": 1, "tags": 1 }  )
+#+end_src
+
+#+RESULTS:
+#+begin_example
+================
+Warning: the "mongo" shell has been superseded by "mongosh",
+which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
+an upcoming release.
+We recommend you begin using "mongosh".
+For installation instructions, see
+https://docs.mongodb.com/mongodb-shell/install/
+================
+{ "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "tags" : [ "cotton" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "tags" : [ "blank", "red" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "tags" : [ "gray" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424e"), "item" : "mousepad", "tags" : [ "gel", "blue" ] }
+#+end_example
+
+#+begin_src mongo :db mydb
+db.inventory.find( {}, { "size": 0 }  )
+#+end_src
+
+#+RESULTS:
+#+begin_example
+================
+Warning: the "mongo" shell has been superseded by "mongosh",
+which delivers improved usability and compatibility.The "mongo" shell has been deprecated and will be removed in
+an upcoming release.
+We recommend you begin using "mongosh".
+For installation instructions, see
+https://docs.mongodb.com/mongodb-shell/install/
+================
+{ "_id" : ObjectId("615e444928bd018d33cd3e9c"), "item" : "canvas", "qty" : 100, "tags" : [ "cotton" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424c"), "item" : "journal", "qty" : 25, "tags" : [ "blank", "red" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424d"), "item" : "mat", "qty" : 85, "tags" : [ "gray" ] }
+{ "_id" : ObjectId("615e44923e942e791a25424e"), "item" : "mousepad", "qty" : 25, "tags" : [ "gel", "blue" ] }
+#+end_example
 
 
 
