@@ -3,20 +3,26 @@
 
 In the property graph model, data is represented using graphs with nodes and edges that both can have *types* (called *labels*) and can be associated with a map of name-value pairs (called *properties*). In this demo, we will look at *Cypher*, a declarative query and data definition language for property graphs. We will use [[https://github.com/neo4j/neo4j][Neo4j]] which implements this language.
 
-* Creating graphs
+* Creating and manipulating graphs
+** Creating nodes and edges
+#+begin_src cypher :password neopren :results none :exports both
+MATCH (n)
+DETACH DELETE n
+#+end_src
+
 
 - the =CREATE= statement creates new nodes and edges. A single create statement can create multiple nodes and edges. The statement is finished with =;=.
 
 The syntax for creating a node is:
 
-#+begin_src cypher :password neopren :results none :exports both
+#+begin_src cypher :password neopren :results none :exports code
 CREATE (nodeid:label { propertynameOne:'value1', ..., propertynameN:'valueN' });
 #+end_src
 
 Note that node ids are only valid within the scope of a single statement.
 
 To create an edge:
-#+begin_src cypher :password neopren :results none :exports both
+#+begin_src cypher :password neopren :results none :exports code
 CREATE (nodeidOne)-[:EDGE_LABEL] { propertynameOne:'value1', ..., propertynameN:'valueN' }->(nodeidTwo)
 #+end_src
 
@@ -40,6 +46,9 @@ CREATE (carrieanne)-[:ACTS_IN { role : 'Trinity' }]->(matrix3)
 
 #+RESULTS:
 |---|
+** Deleting and updating graphs
+
+We do not discuss this here. Have a look at [[https://neo4j.com/docs/cypher-manual/current/clauses/delete/]] [[https://neo4j.com/docs/cypher-manual/current/clauses/set/]].
 
 * Querying with Cypher
 
@@ -228,19 +237,146 @@ RETURN actor.name, r.role, movie.title
  | Carrie-Anne Moss   | Trinity  | The Matrix Reloaded    |
  | Carrie-Anne Moss   | Trinity  | The Matrix             |
 
-
- # Local Variables:
- # org-image-actual-width: 800
- # End:
-
 *** Filtering with =WHERE=
 Like in SQL you can filter results using =WHERE=
 
- #+BEGIN_SRC cypher :file actedin.png :password neopren :results file :exports both
+ #+BEGIN_SRC cypher :password neopren :results raw
 MATCH (actor)-[r:ACTS_IN]->(movie)
 WHERE actor.name = 'Keanu Reeves'
-RETURN *
+RETURN actor.name
+#+END_SRC
+
+ #+RESULTS:
+ | actor.name   |
+ |--------------|
+ | Keanu Reeves |
+ | Keanu Reeves |
+ | Keanu Reeves |
+*** Ordering with =ORDER BY= and limiting with =LIMIT= and =SKIP=
+
+Using =LIMIT= you can restrict the number of answer that are returned.
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (actor)-[r:ACTS_IN]->(movie)
+WHERE actor.name = 'Keanu Reeves'
+RETURN actor.name
+LIMIT 1
+#+END_SRC
+
+#+RESULTS:
+| actor.name   |
+|--------------|
+| Keanu Reeves |
+
+With =ORDER BY= answer can be ordered.
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (actor)-[r:ACTS_IN]->(movie)
+RETURN actor.name
+ORDER BY actor.name
+#+END_SRC
+
+#+RESULTS:
+| actor.name         |
+|--------------------|
+| Carrie-Anne Moss   |
+| Carrie-Anne Moss   |
+| Carrie-Anne Moss   |
+| Keanu Reeves       |
+| Keanu Reeves       |
+| Keanu Reeves       |
+| Laurence Fishburne |
+| Laurence Fishburne |
+| Laurence Fishburne |
+
+With =SKIP= you can skip =n= results.
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (actor)-[r:ACTS_IN]->(movie)
+RETURN actor.name
+ORDER BY actor.name
+SKIP 3
+LIMIT 3
+#+END_SRC
+
+#+RESULTS:
+| actor.name   |
+|--------------|
+| Keanu Reeves |
+| Keanu Reeves |
+| Keanu Reeves |
+
+** Set operations
+
+*** =UNION=
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (n:Actor)
+RETURN n.name AS name
+UNION ALL
+MATCH (n:Movie)
+RETURN n.title AS name
  #+END_SRC
 
  #+RESULTS:
- [[file:actedin.png]]
+ | name                   |
+ |------------------------|
+ | Keanu Reeves           |
+ | Laurence Fishburne     |
+ | Carrie-Anne Moss       |
+ | The Matrix             |
+ | The Matrix Reloaded    |
+ | The Matrix Revolutions |
+
+** Aggregation
+
+*** Aggregation functions in =RETURN=
+
+We can apply aggregation functions in the =RETURN= clause
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (n:Actor)
+RETURN count(*)
+ #+END_SRC
+
+ #+RESULTS:
+ | count(*) |
+ |----------|
+ |        3 |
+
+If the =RETURN= clause also contains non-aggregation functions, then these are consider to be group-by expressions.
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (a:Actor)-[:ACTS_IN]->(:Movie)
+RETURN a.name, count(*)
+ #+END_SRC
+
+ #+RESULTS:
+ | a.name             | count(*) |
+ |--------------------+----------|
+ | Keanu Reeves       |        3 |
+ | Laurence Fishburne |        3 |
+ | Carrie-Anne Moss   |        3 |
+
+** Subqueries with =WITH=
+
+The =WITH= clause allows an intermediate result to be specified that can then be fed into additional clauses, e.g., filtering after an aggregation as shown below. For more details see [[https://neo4j.com/docs/cypher-manual/current/clauses/with/][here]].
+
+ #+BEGIN_SRC cypher :password neopren :results raw
+MATCH (a:Actor)-[:ACTS_IN]->(:Movie)
+WITH a, count(*) AS c
+WHERE c > 2
+RETURN a.name, c
+#+END_SRC
+
+ #+RESULTS:
+ | a.name             | c |
+ |--------------------+---|
+ | Keanu Reeves       | 3 |
+ | Laurence Fishburne | 3 |
+ | Carrie-Anne Moss   | 3 |
+
+
+# Local Variables:
+# org-image-actual-width: 800
+# End:

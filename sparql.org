@@ -4,73 +4,147 @@ SPARQL is a query language for RDF data. The syntax of the language bears some s
 
 * Triple patterns (graph patterns)
 
-At the core of SPARQL queries are triple patterns which like RDF triples are tuples of subject, predicate, and object. Triple patterns consist of variables (prefixed by =?=) and constants.  The triple patterns in SPARQL in the =WHERE= clause. SPARQL queries return tuples of variable bindings for all bindings of the variables in the triple patterns such that the subgraph defined by the tuple patterns after applying the bindings exists in the RDF graph. Since most elements in SPARQL queries are URIs which can be lengthy, it is possible to define per-query abbreviations of
+At the core of SPARQL queries are triple patterns which like RDF triples are tuples of subject, predicate, and object. Triple patterns consist of variables (prefixed by =?=) and constants.  The triple patterns in SPARQL in the =WHERE= clause. SPARQL queries return tuples of variable bindings for all bindings of the variables in the triple patterns such that the subgraph defined by the tuple patterns after applying the bindings exists in the RDF graph (they can also return graphs, as explained [[*Returning Tables of Bindings vs Returning Graphs vs Boolean Queries][here]]). Since most elements in SPARQL queries are URIs which can be lengthy, it is possible to define per-query abbreviations of URI prefixes with =PREDIX=.
+
+#+begin_src sparql :url http://db.artsdata.ca/repositories/artsdata :format text/csv
+prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+prefix schema: <http://schema.org>
+
+SELECT *
+WHERE {
+  	?s ?p ?o                    # This is a tiple pattern binding ?s, ?p, ?o to all triples in the input graph
+      }
+LIMIT 10
+#+end_src
+
+#+RESULTS:
+| s                                                   | p                                               | o                                                   |
+|-----------------------------------------------------+-------------------------------------------------+-----------------------------------------------------|
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#type     | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#type     | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
+| http://www.w3.org/2000/01/rdf-schema#Class          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
+| http://www.w3.org/2000/01/rdf-schema#Class          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
+| http://www.w3.org/2000/01/rdf-schema#subPropertyOf  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
+| http://www.w3.org/2000/01/rdf-schema#subPropertyOf  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
+
 
 
 #+begin_src sparql :url http://db.artsdata.ca/repositories/artsdata :format text/csv
 prefix rdft: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT *
+prefix schema: <http://schema.org/>
+SELECT ?p ?o
 WHERE {
-  	?s ?p ?o
+  	<http://ldfi.ca/data/person103> ?p ?o
       }
-LIMIT 50
+LIMIT 10
 #+end_src
 
 #+RESULTS:
-| s                                                                | p                                               | o                                                   |
-|------------------------------------------------------------------+-------------------------------------------------+-----------------------------------------------------|
-| http://www.w3.org/1999/02/22-rdf-syntax-ns#type                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/1999/02/22-rdf-syntax-ns#type                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property              | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
-| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property              | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#Class                       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
-| http://www.w3.org/2000/01/rdf-schema#Class                       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#Resource                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
-| http://www.w3.org/2000/01/rdf-schema#Resource                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#subPropertyOf               | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2000/01/rdf-schema#subPropertyOf               | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#subPropertyOf               | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#TransitiveProperty    |
-| http://www.w3.org/2000/01/rdf-schema#subClassOf                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2000/01/rdf-schema#subClassOf                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#subClassOf                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#TransitiveProperty    |
-| http://www.w3.org/2000/01/rdf-schema#domain                      | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2000/01/rdf-schema#domain                      | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#range                       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2000/01/rdf-schema#range                       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#sameAs                             | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2002/07/owl#sameAs                             | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#SymmetricProperty                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#TransitiveProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#equivalentProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2002/07/owl#equivalentProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#equivalentProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#SymmetricProperty     |
-| http://www.w3.org/2002/07/owl#equivalentProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#TransitiveProperty    |
-| http://www.w3.org/2002/07/owl#equivalentClass                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2002/07/owl#equivalentClass                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#equivalentClass                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#SymmetricProperty     |
-| http://www.w3.org/2002/07/owl#equivalentClass                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#TransitiveProperty    |
-| http://www.w3.org/2000/01/rdf-schema#Datatype                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
-| http://www.w3.org/2000/01/rdf-schema#Datatype                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#intersectionOf                     | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.ontotext.com/scm_int                                  | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#FunctionalProperty                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Class          |
-| http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://proton.semanticweb.org/protonsys#transitiveOver           | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://proton.semanticweb.org/protonsys#transitiveOver           | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#someValuesFrom                     | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2002/07/owl#someValuesFrom                     | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://proton.semanticweb.org/protonext#Agent                    | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.ontotext.com/_interOf                                 | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.ontotext.com/_allTypes                                | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.ontotext.com/_typeByInt                               | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://proton.semanticweb.org/protonext#roleHolder               | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#allValuesFrom                      | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#inverseOf                          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/1999/02/22-rdf-syntax-ns#Property |
-| http://www.w3.org/2002/07/owl#inverseOf                          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2000/01/rdf-schema#Resource       |
-| http://www.w3.org/2002/07/owl#inverseOf                          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.w3.org/2002/07/owl#SymmetricProperty     |
+| p | o |
+|---+---|
+
+The =WHERE= clause can also specify multiple triple patterns which can share variables. Together these triple patterns define a subgraph that needs to be matched against the input graph. The following query returns all nodes that are of type =Class= and =Resource=.
+
+#+begin_src sparql :url http://db.artsdata.ca/repositories/artsdata :format text/csv
+prefix rdft: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?s
+WHERE {
+  	?s rdft:type rdfs:Class .
+    ?s rdft:type rdfs:Resource .
+      }
+LIMIT 10
+#+end_src
+
+#+RESULTS:
+| s                                                                |
+|------------------------------------------------------------------|
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property              |
+| http://www.w3.org/2000/01/rdf-schema#Class                       |
+| http://www.w3.org/2000/01/rdf-schema#Resource                    |
+| http://www.w3.org/2000/01/rdf-schema#Datatype                    |
+| http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty |
+| http://www.w3.org/2000/01/rdf-schema#Literal                     |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#List                  |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement             |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Alt                   |
+| http://www.w3.org/2000/01/rdf-schema#Container                   |
+
+* Returning Tables of Bindings vs Returning Graphs vs Boolean Queries
+
+SPARQL queries can either
+
+** Returning tables of variable bindings
+
+If a query uses a =SELECT= clause, then the results of the query is a table of the results of evaluating all =SELECT= clause expressions for each evaluation of the variables of the query for which the =WHERE= clause evaluates to true.
+
+#+begin_src sparql :url http://db.artsdata.ca/repositories/artsdata :format text/csv
+prefix rdft: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?o ?p
+WHERE {
+  	?s ?p ?o
+      }
+LIMIT 10
+#+end_src
+
+#+RESULTS:
+| o                                                   | p                                               |
+|-----------------------------------------------------+-------------------------------------------------|
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Class          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Class          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Class          | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+| http://www.w3.org/2000/01/rdf-schema#Resource       | http://www.w3.org/1999/02/22-rdf-syntax-ns#type |
+
+** Returning graphs
+
+If a query contains the =CONSTRUCT= clause, then the query result is an RDF graph which contains all triples constructed by evaluating the =CONSTRUCT= clause for each matching binding (for which the =WHERE= clause evaluates to true) of the query's variables to constants.
+
 
 * Filtering
+
+The variable bindings produced by the =WHERE= clause can be filtered using a condition specified in the =FILTERING= clause.
+
+#+begin_src sparql :url http://db.artsdata.ca/repositories/artsdata :format text/csv
+prefix rdft: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?o
+WHERE {
+  	?o ?p rdfs:Class.
+    ?o ?l rdfs:Type.
+      }
+LIMIT 10
+#+end_src
+
+#+RESULTS:
+| s                                                                |
+|------------------------------------------------------------------|
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Property              |
+| http://www.w3.org/2000/01/rdf-schema#Class                       |
+| http://www.w3.org/2000/01/rdf-schema#Resource                    |
+| http://www.w3.org/2000/01/rdf-schema#Datatype                    |
+| http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty |
+| http://www.w3.org/2000/01/rdf-schema#Literal                     |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#List                  |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement             |
+| http://www.w3.org/1999/02/22-rdf-syntax-ns#Alt                   |
+| http://www.w3.org/2000/01/rdf-schema#Container                   |
+
+
+
 * Limiting number of results
+Using =LIMIT= you can restrict the number of returned results.
+
 * Aggregation
